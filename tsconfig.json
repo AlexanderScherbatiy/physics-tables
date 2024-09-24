@@ -4,7 +4,9 @@
     "noEmitOnError": true,
     "removeComments": false,
     "sourceMap": true,
-    "target": "es5"
-  }
+    "skipLibCheck": true,
+    "target": "es2015"
+  },
+  "include": ["main.ts"]
 }
 
