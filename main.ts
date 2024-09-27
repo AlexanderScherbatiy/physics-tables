@@ -1,7 +1,14 @@
 import { writeFileSync } from 'fs';
 
+// units second/kg/meter
+
+const CONST_LIGHT_VELOCITY = 3e8 // m/s
+const CONST_ELECTRON_CHARGE = 1.60e-19 // coulomb
+
+const CONVERSION_KG_TO_EV = CONST_LIGHT_VELOCITY * CONST_LIGHT_VELOCITY / CONST_ELECTRON_CHARGE
+
 const PARTICLE_NAME = "PARTICLE_NAME"
-const PARTICLE_MASS = "PARTICLE_MASS" // kg
+const PARTICLE_MASS = "PARTICLE_MASS"
 
 class Particle {
     public properties: Map<string, any>
@@ -13,6 +20,35 @@ class Particle {
         return this.properties.get(key)
     }
 }
+
+enum UnitType {
+    KILOGRAM,
+    ELECTRON_VOLT,
+}
+
+class UnitValue {
+    constructor(public unit: UnitType, public value: number) { }
+}
+
+class UnitConversion {
+
+    toElectronVolts(unitValue: UnitValue): UnitValue {
+        return new UnitValue(UnitType.ELECTRON_VOLT, this.convertToElectronVolts(unitValue))
+    }
+
+    private convertToElectronVolts(unitValue: UnitValue): number {
+        const value = unitValue.value
+        switch (unitValue.unit) {
+            case UnitType.ELECTRON_VOLT: return value
+            case UnitType.KILOGRAM: return CONVERSION_KG_TO_EV * value
+            default:
+                throw new Error(`Unknow unit type: ${unitValue.unit} for conversion to electron volts.`)
+        }
+    }
+}
+
+const UNIT_CONVERSION = new UnitConversion()
+
 
 const particles: Particle[] = [
     new Particle([
@@ -58,14 +94,24 @@ function physicsTables(writer: TableWriter, particles: Particle[]) {
     elementaryParticlesTable(writer, particles)
 }
 
+function pad(value: any, maxLength: number): string {
+    return `${value}`.padEnd(maxLength)
+}
+
+function padNumber(value: number, maxLength: number): string {
+    return pad(value.toExponential(2), maxLength)
+}
+
 function elementaryParticlesTable(writer: TableWriter, particles: Particle[]): void {
     writer.write(`## Elementary particles`)
-    writer.write(`| particle / mass  |kg|`)
-    writer.write(`|------------|------------|`)
-    const pad = 12
+    writer.write(`| particle / mass  |kg|ev`)
+    writer.write(`|------------|------------|------------|`)
+    const PAD = 12
     for (const p of particles) {
-        const name = `${p.get(PARTICLE_NAME)}`.padEnd(pad)
-        const mass = `${p.get(PARTICLE_MASS)}`.padEnd(pad)
-        writer.write(`|${name}|${mass}|`)
+        const name = p.get(PARTICLE_NAME) as string
+        const massKg = p.get(PARTICLE_MASS) as number
+        const mass = new UnitValue(UnitType.KILOGRAM, massKg)
+        const massEv = UNIT_CONVERSION.toElectronVolts(mass).value
+        writer.write(`|${pad(name, PAD)}|${padNumber(massKg, PAD)}|${padNumber(massEv, PAD)}|`)
     }
 }
