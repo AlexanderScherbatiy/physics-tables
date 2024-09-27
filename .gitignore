@@ -1,4 +1,7 @@
 *.js
+*.js.map
+
+*.txt
 
 node_modules
 package-lock.json
