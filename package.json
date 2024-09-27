@@ -2,6 +2,7 @@
   "name": "physics-tables",
   "version": "1.0.0",
   "description": "Physics Tables",
+  "type": "module",
   "dependencies": {
     "typescript": "^5.5.0",
     "@types/node": "^18.0.0"
