@@ -5,8 +5,9 @@
     "removeComments": false,
     "sourceMap": true,
     "skipLibCheck": true,
+    "outDir": "./build",
     "target": "es2015"
   },
-  "include": ["main.ts"]
+  "include": ["./src/*.ts"]
 }
 

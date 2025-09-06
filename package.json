@@ -8,6 +8,6 @@
     "@types/node": "^18.0.0"
   },
   "scripts": {
-    "main": "tsc -p . && node main.js"
+    "main": "tsc -p . && node ./build/main.js"
   }
 }
