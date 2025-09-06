@@ -21,47 +21,60 @@ class Particle {
     }
 }
 
-enum UnitType {
+enum MassUnitType {
     KILOGRAM,
     ELECTRON_VOLT,
 }
 
-class UnitValue {
-    constructor(public unit: UnitType, public value: number) { }
+interface PhysicsUnit {
 }
 
-class UnitConversion {
+class MassUnit implements PhysicsUnit {
 
-    toElectronVolts(unitValue: UnitValue): UnitValue {
-        return new UnitValue(UnitType.ELECTRON_VOLT, this.convertToElectronVolts(unitValue))
+    private constructor(private mass: number) {
     }
 
-    private convertToElectronVolts(unitValue: UnitValue): number {
-        const value = unitValue.value
-        switch (unitValue.unit) {
-            case UnitType.ELECTRON_VOLT: return value
-            case UnitType.KILOGRAM: return CONVERSION_KG_TO_EV * value
+    static from(mass: number, unit: MassUnitType) {
+        return new MassUnit(this.toKilogram(mass, unit))
+    }
+
+    to(unit: MassUnitType): number {
+        switch (unit) {
+            case MassUnitType.KILOGRAM: return this.mass
+            case MassUnitType.ELECTRON_VOLT: return this.mass * CONVERSION_KG_TO_EV
             default:
-                throw new Error(`Unknow unit type: ${unitValue.unit} for conversion to electron volts.`)
+                throw new Error(`Unknow unit type: ${unit} to mass conversion.`)
+        }
+
+        return this.mass
+    }
+
+    private static toKilogram(mass: number, unit: MassUnitType): number {
+        switch (unit) {
+            case MassUnitType.KILOGRAM: return mass
+            case MassUnitType.ELECTRON_VOLT: return mass / CONVERSION_KG_TO_EV
+            default:
+                throw new Error(`Unknow unit type: ${unit} from mass conversion.`)
         }
     }
 }
 
-const UNIT_CONVERSION = new UnitConversion()
-
+function toKg(mass: number): MassUnit {
+    return MassUnit.from(mass, MassUnitType.KILOGRAM)
+}
 
 const particles: Particle[] = [
     new Particle([
         [PARTICLE_NAME, "electron"],
-        [PARTICLE_MASS, 9.11e-31],
+        [PARTICLE_MASS, toKg(9.11e-31)],
     ]),
     new Particle([
         [PARTICLE_NAME, "proton"],
-        [PARTICLE_MASS, 1.67e-27],
+        [PARTICLE_MASS, toKg(1.67e-27)],
     ]),
     new Particle([
         [PARTICLE_NAME, "neutron"],
-        [PARTICLE_MASS, 1.68e-27],
+        [PARTICLE_MASS, toKg(1.68e-27)],
     ]),
 ]
 
@@ -130,13 +143,10 @@ function generatePhysicsTables() {
     dataView.writeTable(columns, particles, (p, i) => {
         switch (i) {
             case 0: return p.get(PARTICLE_NAME)
-            case 1: return p.get(PARTICLE_MASS)
-            case 2: {
-                const massKg = p.get(PARTICLE_MASS) as number
-                const mass = new UnitValue(UnitType.KILOGRAM, massKg)
-                const massEv = padNumber(UNIT_CONVERSION.toElectronVolts(mass).value, 0)
-                return massEv
-            }
+            case 1: return (p.get(PARTICLE_MASS) as MassUnit).to(MassUnitType.KILOGRAM)
+            case 2: return (p.get(PARTICLE_MASS) as MassUnit).to(MassUnitType.ELECTRON_VOLT)
+            default:
+                throw new Error(`Index ${i} out of table column bounds ${columns.length}`)
         }
     })
 
@@ -146,9 +156,6 @@ function generatePhysicsTables() {
 }
 
 function pad(value: any, maxLength: number): string {
+    if (typeof value == "number") return pad(value.toExponential(2), maxLength)
     return `${value}`.padEnd(maxLength)
-}
-
-function padNumber(value: number, maxLength: number): string {
-    return pad(value.toExponential(2), maxLength)
 }
