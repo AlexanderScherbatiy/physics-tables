@@ -73,25 +73,76 @@ for (const particle of particles) {
 }
 */
 
-class TableWriter {
+interface DataView {
+    pushHeader(header: string)
+    popHeader()
+    writeTable<T>(columns: string[], rows: T[], mapper: (value: T, rowIndex: number) => string)
+    save()
+}
+
+class MarkDownDataView implements DataView {
+
+    private headerPrefix: string = ""
     private lines: string[] = []
 
-    write(line: string): void {
-        this.lines.push(line)
+    constructor(public fileName: string) {
     }
 
-    toFile(fileName: string): void {
-        writeFileSync(`./${fileName}`, this.lines.join("\n"));
+    pushHeader(header: string) {
+        this.headerPrefix += "#"
+        this.lines.push(`${this.headerPrefix} ${header}`)
+    }
+
+    popHeader() {
+        this.headerPrefix = this.headerPrefix.substring(0, this.headerPrefix.length - 1)
+    }
+
+    writeTable<T>(columns: string[], rows: T[], mapper: (value: T, rowIndex: number) => string) {
+
+        const pads = columns.map(it => it.length)
+        this.writeTableRow(columns)
+        this.writeTableRow(columns.map((_, i) => `-`.repeat(pads[i])))
+
+        for (const row of rows) {
+            const values = columns.map((_, i) => mapper(row, i))
+            this.writeTableRow(values.map((it, i) => pad(it, pads[i])))
+        }
+    }
+
+    private writeTableRow(values: string[]) {
+        this.lines.push(`|${values.join("|")}|`)
+    }
+
+    save() {
+        writeFileSync(`./${this.fileName}`, this.lines.join("\n"));
     }
 }
 
-const writer = new TableWriter()
-physicsTables(writer, particles)
-writer.toFile("README.md")
+generatePhysicsTables()
 
-function physicsTables(writer: TableWriter, particles: Particle[]) {
-    writer.write(`# Phyiscs Tables`)
-    elementaryParticlesTable(writer, particles)
+function generatePhysicsTables() {
+    const dataView: DataView = new MarkDownDataView("README.md")
+    dataView.pushHeader(`Phyiscs Tables`)
+    dataView.pushHeader(`Elementary particles`)
+
+    const columns = ["particle / mass", "kg", "ev"]
+
+    dataView.writeTable(columns, particles, (p, i) => {
+        switch (i) {
+            case 0: return p.get(PARTICLE_NAME)
+            case 1: return p.get(PARTICLE_MASS)
+            case 2: {
+                const massKg = p.get(PARTICLE_MASS) as number
+                const mass = new UnitValue(UnitType.KILOGRAM, massKg)
+                const massEv = padNumber(UNIT_CONVERSION.toElectronVolts(mass).value, 0)
+                return massEv
+            }
+        }
+    })
+
+    dataView.popHeader()
+    dataView.popHeader()
+    dataView.save()
 }
 
 function pad(value: any, maxLength: number): string {
@@ -100,18 +151,4 @@ function pad(value: any, maxLength: number): string {
 
 function padNumber(value: number, maxLength: number): string {
     return pad(value.toExponential(2), maxLength)
-}
-
-function elementaryParticlesTable(writer: TableWriter, particles: Particle[]): void {
-    writer.write(`## Elementary particles`)
-    writer.write(`| particle / mass  |kg|ev`)
-    writer.write(`|------------|------------|------------|`)
-    const PAD = 12
-    for (const p of particles) {
-        const name = p.get(PARTICLE_NAME) as string
-        const massKg = p.get(PARTICLE_MASS) as number
-        const mass = new UnitValue(UnitType.KILOGRAM, massKg)
-        const massEv = UNIT_CONVERSION.toElectronVolts(mass).value
-        writer.write(`|${pad(name, PAD)}|${padNumber(massKg, PAD)}|${padNumber(massEv, PAD)}|`)
-    }
 }
